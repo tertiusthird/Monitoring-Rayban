@@ -2,9 +2,10 @@ import requests
 from bs4 import BeautifulSoup
 import os
 
-# Configurações do Monitor
+# Configurações via Variáveis de Ambiente
 URL = "https://www.ray-ban.com/brazil/oculos-de-sol/RB2140%20UNISEX%20wayfarer%20classic-preto/805289126577"
-PRECO_ALVO = 750
+# Agora o preço vem das configurações do GitHub (ou 750 por padrão)
+PRECO_ALVO = float(os.environ.get('PRECO_ALVO', 750))
 TELEGRAM_TOKEN = os.environ.get('TELEGRAM_TOKEN')
 CHAT_ID = os.environ.get('TELEGRAM_CHAT_ID')
 
@@ -14,28 +15,26 @@ def check_price():
     }
     
     try:
-        response = requests.get(URL, headers=headers, timeout=10)
+        response = requests.get(URL, headers=headers, timeout=15)
         soup = BeautifulSoup(response.content, 'html.parser')
-        
-        # Busca o preço no site da Ray-Ban via meta tag
         price_tag = soup.find("meta", property="product:price:amount")
         
         if price_tag:
-            price = float(price_tag["content"])
-            print(f"Preço actual encontrado: R$ {price}")
+            current_price = float(price_tag["content"])
+            print(f"DEBUG: Preço no site: R$ {current_price} | Alvo: R$ {PRECO_ALVO}")
             
-            if price <= PRECO_ALVO:
-                send_notification(price)
+            if current_price <= PRECO_ALVO:
+                send_notification(current_price)
             else:
-                print("Preço ainda acima do alvo. Sem alerta.")
+                print("Preço ainda acima do alvo.")
         else:
-            print("Erro: Não foi possível ler o preço no site.")
+            print("Erro: Preço não encontrado na página.")
             
     except Exception as e:
         print(f"Erro na execução: {e}")
 
 def send_notification(price):
-    msg = f"🚨 PROMOÇÃO RAY-BAN!\n\nO Wayfarer baixou para R$ {price}!\nLink: {URL}"
+    msg = f"🚨 TESTE DE PREÇO RAY-BAN!\n\nO valor atual é R$ {price}, que está abaixo do seu alvo de R$ {PRECO_ALVO}!\n\nLink: {URL}"
     send_url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage?chat_id={CHAT_ID}&text={msg}"
     requests.get(send_url)
 
